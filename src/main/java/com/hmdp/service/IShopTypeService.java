@@ -1,0 +1,9 @@
+package com.hmdp.service;
+
+import com.hmdp.entity.ShopType;
+
+import java.util.List;
+
+public interface IShopTypeService {
+    List<ShopType> findAll();
+}
