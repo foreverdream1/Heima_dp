@@ -9,6 +9,10 @@ import java.util.List;
 @Mapper
 public interface ShopTypeMapper {
 
+    /**
+     * 查询分类
+     * @return
+     */
     @Select("SELECT * FROM tb_shop_type ORDER BY sort")
     List<ShopType> findAll();
 }

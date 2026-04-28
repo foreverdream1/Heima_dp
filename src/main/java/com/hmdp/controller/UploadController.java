@@ -4,6 +4,9 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.hmdp.dto.Result;
 import com.hmdp.utils.SystemConstants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,13 +15,27 @@ import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * 文件上传控制器
+ * 提供图片上传和删除接口
+ */
 @Slf4j
 @RestController
 @RequestMapping("upload")
+@Tag(name = "文件上传", description = "文件上传相关接口，支持图片上传和删除")
 public class UploadController {
 
+    /**
+     * 上传博客图片
+     *
+     * @param image 图片文件
+     * @return 上传后的文件名
+     */
+    @Operation(summary = "上传博客图片", description = "上传博客图片，返回存储的文件名")
     @PostMapping("blog")
-    public Result uploadImage(@RequestParam("file") MultipartFile image) {
+    public Result uploadImage(
+            @Parameter(description = "图片文件", required = true)
+            @RequestParam("file") MultipartFile image) {
         try {
             // 获取原始文件名称
             String originalFilename = image.getOriginalFilename();
@@ -34,8 +51,17 @@ public class UploadController {
         }
     }
 
+    /**
+     * 删除博客图片
+     *
+     * @param filename 文件名
+     * @return 操作结果
+     */
+    @Operation(summary = "删除博客图片", description = "根据文件名删除已上传的博客图片")
     @GetMapping("/blog/delete")
-    public Result deleteBlogImg(@RequestParam("name") String filename) {
+    public Result deleteBlogImg(
+            @Parameter(description = "文件名", required = true)
+            @RequestParam("name") String filename) {
         File file = new File(SystemConstants.IMAGE_UPLOAD_DIR, filename);
         if (file.isDirectory()) {
             return Result.fail("错误的文件名称");
@@ -44,6 +70,12 @@ public class UploadController {
         return Result.ok();
     }
 
+    /**
+     * 生成新的文件名（按哈希分目录）
+     *
+     * @param originalFilename 原始文件名
+     * @return 新文件名（包含目录路径）
+     */
     private String createNewFileName(String originalFilename) {
         // 获取后缀
         String suffix = StrUtil.subAfter(originalFilename, ".", true);

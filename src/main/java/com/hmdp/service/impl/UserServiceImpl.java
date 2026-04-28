@@ -1,16 +1,40 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.json.JSONUtil;
+import com.hmdp.dto.LoginFormDTO;
+import com.hmdp.dto.Result;
+import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.RedisConstants;
+import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.SystemConstants;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@Slf4j
 @Service
 public class UserServiceImpl implements IUserService {
 
-    @Resource
+    @Autowired
     private UserMapper userMapper;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public User findById(Long id) {
@@ -21,4 +45,83 @@ public class UserServiceImpl implements IUserService {
     public User findByPhone(String phone) {
         return userMapper.findByPhone(phone);
     }
+
+    @Override
+    public Result sendCode(String phone, HttpSession session) {
+        //1.校验手机号
+        log.info("校验手机号：{}",phone);
+        if(RegexUtils.isPhoneInvalid(phone)){
+            //2.如果不符合返回错误信息
+            return Result.fail("手机号格式错误");
+        }
+        //3.符合生成验证码
+        String code = RandomUtil.randomNumbers(6);
+
+        //4.保存验证码到redis
+        stringRedisTemplate.opsForValue().set(RedisConstants.LOGIN_CODE_KEY +phone,code,2, TimeUnit.MINUTES);
+        //5.发送验证码
+        log.debug("发送验证码：{}",code);
+
+        //6.返回成功
+        return Result.ok();
+
+    }
+
+    @Override
+    public Result login(LoginFormDTO loginForm, HttpSession session) {
+        //校验手机号
+        String phone = loginForm.getPhone();
+        log.info("校验手机号：{}",phone);
+        if(RegexUtils.isPhoneInvalid(phone)){
+            //2.如果不符合返回错误信息
+            return Result.fail("手机号格式错误");
+        }
+        //验证验证码是否正确
+        String cacheCode = stringRedisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
+        String code=loginForm.getCode();
+        //不一致报错
+        if(cacheCode==null||!cacheCode.toString().equals(code)){
+            return Result.fail("验证码错误");
+        }
+
+        //一致根据手机号查询用户
+        User user = userMapper.findByPhone(phone);
+        //判断用户是否存在
+        if(user==null){
+            //不存在,创建新用户并保存
+            log.info("创建新用户");
+            user=createUserWithPhone(phone);
+        }
+        //存在，保存用户id到session
+        UserDTO userDTO = new UserDTO();
+        BeanUtils.copyProperties(user, userDTO);
+
+        //7.保存用户信息到redis
+        //7.1.生成token
+        String token = UUID.randomUUID().toString(true);
+        //7.2.保存
+        UserDTO userDTO1= BeanUtil.copyProperties(user,UserDTO.class);
+        Map<String, Object> userMap = BeanUtil.beanToMap(userDTO1,new HashMap<>(),
+                CopyOptions.create()
+                        .setIgnoreNullValue(true)
+                        .setFieldValueEditor((fieldName,fieldValue)->{
+                            return fieldValue.toString();
+                        }));
+        String key = RedisConstants.LOGIN_USER_KEY+token;
+        stringRedisTemplate.opsForHash().putAll(key,userMap);
+
+        stringRedisTemplate.expire(key,RedisConstants.LOGIN_USER_TTL,TimeUnit.MINUTES);
+
+        return Result.ok(token);
+    }
+    private User createUserWithPhone(String phone){
+        //创建用户
+        User user = new User();
+        user.setPhone(phone);
+        user.setNickName(SystemConstants.USER_NICK_NAME_PREFIX +RandomUtil.randomString(10));
+        //保存用户
+        userMapper.save(user);
+        return user;
+    }
+
 }

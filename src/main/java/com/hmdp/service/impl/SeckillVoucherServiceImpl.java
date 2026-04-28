@@ -4,12 +4,13 @@ import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.mapper.SeckillVoucherMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SeckillVoucherServiceImpl implements ISeckillVoucherService {
 
-    @Resource
+    @Autowired
     private SeckillVoucherMapper seckillVoucherMapper;
 
     @Override
