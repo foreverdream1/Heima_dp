@@ -1,19 +1,21 @@
 package com.hmdp.service.impl;
 
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
+import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisConstants;
+
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.util.List;
+
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -25,27 +27,22 @@ public class ShopServiceImpl implements IShopService {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private CacheClient cacheClient;
+
     @Override
     public Result findById(Long id) {
+        //缓存穿透
+        //互斥锁
+        //逻辑过期
 
-        String key= RedisConstants.CACHE_SHOP_KEY +id;
-        //1.根据id从redis查询商户信息
-        String shopJson = stringRedisTemplate.opsForValue().get(key);
-        //2.如果商户信息不存在，抛出异常
-        if (StrUtil.isNotBlank(shopJson)) {
-            Shop shop = JSONUtil.toBean(shopJson, Shop.class);
-            return Result.ok(shop);
-        }
-        //3.如果商户信息存在，返回商户信息
-        Shop shop=shopMapper.findById(id);
-        //4.如果商户信息不存在，查询数据库，将商户信息保存到redis
-        if(shop==null){
-            return Result.fail("商户不存在");
-        }
-        //5.返回商户信息
-        stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(shop),RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
 
+        Shop shop = cacheClient.queryWithLogicalExpire(RedisConstants.CACHE_SHOP_KEY, id, Shop.class, this::getById, RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
+        if (shop == null) {
+            return Result.fail("店铺不存在");
+        }
         return Result.ok(shop);
+
     }
 
     @Override
@@ -53,18 +50,28 @@ public class ShopServiceImpl implements IShopService {
         return shopMapper.findByTypeId(typeId);
     }
 
+    /**
+     * 根据ID从数据库查询店铺信息（不涉及缓存）
+     *
+     * @param id 店铺ID
+     * @return 店铺对象，如果不存在则返回null
+     */
+    private Shop getById(Long id) {
+        return shopMapper.findById(id);
+    }
+
     @Override
     @Transactional
     public Result updateById(Shop shop) {
         Long id = shop.getId();
-        if(id==null){
+        if (id == null) {
             return Result.fail("店铺id不能为空");
         }
 
         //更新数据
         shopMapper.updateById(shop);
         //删除缓存
-        stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY+ id);
+        stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + id);
         return Result.ok();
     }
 
@@ -81,17 +88,17 @@ public class ShopServiceImpl implements IShopService {
         if (shop.getTypeId() == null) {
             return Result.fail("店铺类型不能为空");
         }
-        
+
         // 设置创建时间和更新时间
         shop.setCreateTime(java.time.LocalDateTime.now());
         shop.setUpdateTime(java.time.LocalDateTime.now());
-        
+
         // 保存到数据库
         int result = shopMapper.insert(shop);
         if (result <= 0) {
             return Result.fail("店铺保存失败");
         }
-        
+
         return Result.ok("店铺保存成功");
     }
 }
