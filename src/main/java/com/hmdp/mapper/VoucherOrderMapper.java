@@ -14,4 +14,9 @@ public interface VoucherOrderMapper {
 
     @Select("SELECT * FROM tb_voucher_order WHERE user_id = #{userId}")
     List<VoucherOrder> findByUserId(Long userId);
+
+
+    void save(VoucherOrder voucherOrder);
+
+    int findByUserIdAndVoucherId(Long userId, Long voucherId);
 }

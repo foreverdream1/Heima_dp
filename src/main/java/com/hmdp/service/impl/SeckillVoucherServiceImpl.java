@@ -3,7 +3,6 @@ package com.hmdp.service.impl;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.mapper.SeckillVoucherMapper;
 import com.hmdp.service.ISeckillVoucherService;
-import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,5 +15,11 @@ public class SeckillVoucherServiceImpl implements ISeckillVoucherService {
     @Override
     public SeckillVoucher findByVoucherId(Long voucherId) {
         return seckillVoucherMapper.findByVoucherId(voucherId);
+    }
+
+    @Override
+    public boolean updateStock(Long voucherId) {
+        int updated = seckillVoucherMapper.updateStock(voucherId);
+        return updated > 0;
     }
 }

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hmdp.mapper.VoucherOrderMapper">
+
+    <insert id="save" parameterType="com.hmdp.entity.VoucherOrder">
+        INSERT INTO tb_voucher_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="voucherId != null">voucher_id,</if>
+            <if test="payType != null">pay_type,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="payTime != null">pay_time,</if>
+            <if test="useTime != null">use_time,</if>
+            <if test="refundTime != null">refund_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="voucherId != null">#{voucherId},</if>
+            <if test="payType != null">#{payType},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="payTime != null">#{payTime},</if>
+            <if test="useTime != null">#{useTime},</if>
+            <if test="refundTime != null">#{refundTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+
+    </insert>
+    <select id="findByUserIdAndVoucherId" resultType="java.lang.Integer">
+        select count(id) from tb_voucher_order
+        <where>
+            <if test="userId != null">user_id = #{userId}</if>
+            <if test="voucherId != null">voucher_id = #{voucherId}</if>
+        </where>
+    </select>
+
+</mapper>
