@@ -84,17 +84,16 @@ public class BlogController {
     public Result queryHotBlog(
             @Parameter(description = "当前页码", example = "1")
             @RequestParam(value = "current", defaultValue = "1") Integer current) {
-        List<Blog> records = blogService.findAll();
-        if (records != null) {
-            records.forEach(blog -> {
-                Long userId = blog.getUserId();
-                User user = userService.findById(userId);
-                if (user != null) {
-                    blog.setName(user.getNickName());
-                    blog.setIcon(user.getIcon());
-                }
-            });
-        }
-        return Result.ok(records != null ? records : Collections.emptyList());
+       return blogService.queryHotBlog(current);
+    }
+
+    /**
+     *
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    public Result queryBlogById(@PathVariable("id") Long id){
+        return blogService.queryBlogById(id);
     }
 }
