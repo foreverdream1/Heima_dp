@@ -13,4 +13,6 @@ public interface SeckillVoucherMapper {
 
     @Update("UPDATE tb_seckill_voucher SET stock = stock - 1 WHERE voucher_id = #{voucherId} AND stock > 0")
     int updateStock(Long voucherId);
+
+    void save(SeckillVoucher seckillVoucher);
 }

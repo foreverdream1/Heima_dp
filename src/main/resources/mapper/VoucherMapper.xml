@@ -20,4 +20,33 @@
         WHERE v.status = 1
     </select>
 
+    <!-- 保存优惠券基本信息（stock/beginTime/endTime 为 transient，不属于 tb_voucher，不插入） -->
+    <insert id="save" parameterType="com.hmdp.entity.Voucher" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_voucher
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="shopId != null">shop_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="subTitle != null and subTitle != ''">sub_title,</if>
+            <if test="rules != null and rules != ''">rules,</if>
+            <if test="payValue != null">pay_value,</if>
+            <if test="actualValue != null">actual_value,</if>
+            <if test="type != null">type,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="shopId != null">#{shopId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="subTitle != null and subTitle != ''">#{subTitle},</if>
+            <if test="rules != null and rules != ''">#{rules},</if>
+            <if test="payValue != null">#{payValue},</if>
+            <if test="actualValue != null">#{actualValue},</if>
+            <if test="type != null">#{type},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
 </mapper>

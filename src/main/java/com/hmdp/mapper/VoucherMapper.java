@@ -15,4 +15,6 @@ public interface VoucherMapper {
     List<Voucher> queryVoucherOfShop(Long shopId);
 
     List<Voucher> findAll();
+
+    void save(Voucher voucher);
 }

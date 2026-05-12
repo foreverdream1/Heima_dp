@@ -18,5 +18,5 @@ public interface VoucherOrderMapper {
 
     void save(VoucherOrder voucherOrder);
 
-    int findByUserIdAndVoucherId(Long userId, Long voucherId);
+    int findByUserIdAndVoucherId(Long userId, VoucherOrder voucherOrder);
 }

@@ -11,5 +11,5 @@ public interface IVoucherOrderService {
 
     Result seckillVoucher(Long voucherId);
 
-    Result getResult(Long voucherId, Long userId);
+    void getResult(VoucherOrder voucherOrder);
 }
