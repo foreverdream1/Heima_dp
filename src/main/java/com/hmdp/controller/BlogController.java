@@ -56,7 +56,8 @@ public class BlogController {
     public Result likeBlog(
             @Parameter(description = "博客ID", required = true, example = "1")
             @PathVariable("id") Long id) {
-        return Result.fail("功能未完成");
+        //修改点赞数量
+        return blogService.likeBlog(id);
     }
 
     /**

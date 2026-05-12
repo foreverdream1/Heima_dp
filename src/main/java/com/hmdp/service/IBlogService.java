@@ -12,4 +12,6 @@ public interface IBlogService {
     Result queryHotBlog(Integer current);
 
     Result queryBlogById(Long id);
+
+    Result likeBlog(Long id);
 }
