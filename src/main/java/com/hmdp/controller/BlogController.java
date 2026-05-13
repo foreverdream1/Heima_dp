@@ -111,4 +111,9 @@ public class BlogController {
         Integer pageSize = SystemConstants.MAX_PAGE_SIZE;
         return blogService.queryBlogByIds(id, page, pageSize);
     }
+
+    @GetMapping("/of/follow")
+    public Result queryBlogOfFollow(@RequestParam("lastId") Long max,@RequestParam(value = "offset",defaultValue = "0") Integer offset){
+        return blogService.queryBlogOfFollow(max,offset);
+    }
 }

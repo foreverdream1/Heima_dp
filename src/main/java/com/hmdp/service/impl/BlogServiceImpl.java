@@ -3,6 +3,7 @@ package com.hmdp.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.BooleanUtil;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.ScrollResult;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
 import com.hmdp.entity.Follow;
@@ -16,9 +17,11 @@ import com.hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -182,6 +185,76 @@ public class BlogServiceImpl implements IBlogService {
         User user = userService.findById(userId);
         blog.setName(user.getNickName());
         blog.setIcon(user.getIcon());
+    }
+
+    /**
+     * 根据博客 id 列表批量查询博客
+     */
+    private List<Blog> listByIds(List<Long> ids) {
+        return blogMapper.listByIds(ids);
+    }
+
+    /**
+     * 填充博客的用户信息及点赞状态，并携带下次分页游标
+     *
+     * @param blogs 博客列表
+     * @param minTime 本批次最小时间戳，作为下次请求的游标（max 参数）
+     */
+    private Result fillBlogsWithOffset(List<Blog> blogs, long minTime) {
+        if (blogs == null || blogs.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        blogs.forEach(blog -> {
+            queryBlogUser(blog);
+            isBlogLiked(blog);
+        });
+        return Result.ok(blogs);
+    }
+
+    @Override
+    public Result queryBlogOfFollow(Long max, Integer offset) {
+        // 1. 获取当前用户 id
+        Long userId = UserHolder.getUser().getId();
+        // 2. 从 Redis 收件箱读取博客 id（ZSet score=时间戳，按时间倒序）
+        String key = FOLLOW_BLOG_KEY + userId;
+        // 首次请求（max 为 null）直接取最新 5 条；非首次（max 为上次的最小时间戳）则取 max 以下的
+        Set<ZSetOperations.TypedTuple<String>> typedTuples;
+        if (max == null) {
+            // 首次拉取，取最新 offset~offset+4
+            typedTuples = redisTemplate.opsForZSet()
+                    .reverseRangeWithScores(key, offset, offset + 4L);
+        } else {
+            // 游标：取时间戳 < max 的记录
+            typedTuples = redisTemplate.opsForZSet()
+                    .reverseRangeByScoreWithScores(key, 0, max - 1, offset, 5);
+        }
+        if (typedTuples == null || typedTuples.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        // 3. 解析数据：提取 blogId，找出本批次的最小时间戳作为下次游标
+        List<Long> blogIds = new ArrayList<>(typedTuples.size());
+        long minTime = Long.MAX_VALUE;
+        for (ZSetOperations.TypedTuple<String> tuple : typedTuples) {
+            String idStr = tuple.getValue();
+            blogIds.add(Long.valueOf(idStr));
+            long time = tuple.getScore() != null ? tuple.getScore().longValue() : 0L;
+            if (time < minTime) {
+                minTime = time;
+            }
+        }
+        // 4. 根据 blogId 查博客详情
+        List<Blog> blogs = listByIds(blogIds);
+        for (Blog blog : blogs) {
+            queryBlogUser(blog);
+            isBlogLiked(blog);
+        }
+
+        ScrollResult r=new ScrollResult();
+        r.setList(blogs);
+        r.setMinTime(minTime);
+        r.setOffset(offset);
+        // 5. 填充用户信息、点赞状态，并携带下次游标返回
+        return fillBlogsWithOffset(blogs, minTime);
     }
 
 }

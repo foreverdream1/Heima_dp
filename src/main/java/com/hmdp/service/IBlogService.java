@@ -20,4 +20,6 @@ public interface IBlogService {
     Result queryBlogByIds(List<Long> ids, Integer page, Integer pageSize);
 
     Result saveBlog(Blog blog);
+
+    Result queryBlogOfFollow(Long max, Integer offset);
 }
