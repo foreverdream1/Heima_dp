@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hmdp.mapper.SeckillVoucherMapper">
+
+    <!-- 保存秒杀券扩展信息（voucher_id 是外键，必须传入） -->
+    <insert id="save" parameterType="com.hmdp.entity.SeckillVoucher">
+        INSERT INTO tb_seckill_voucher
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="voucherId != null">voucher_id,</if>
+            <if test="stock != null">stock,</if>
+            <if test="beginTime != null">begin_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="voucherId != null">#{voucherId},</if>
+            <if test="stock != null">#{stock},</if>
+            <if test="beginTime != null">#{beginTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+</mapper>
