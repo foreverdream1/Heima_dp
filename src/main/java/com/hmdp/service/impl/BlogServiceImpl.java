@@ -12,7 +12,6 @@ import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -133,6 +132,16 @@ public class BlogServiceImpl implements IBlogService {
         ).collect(Collectors.toList());
         //返回
         return Result.ok(userDTOS);
+    }
+
+    @Override
+    public Result queryBlogByIds(List<Long> ids, Integer page, Integer pageSize) {
+        if (ids == null || ids.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        int offset = (page - 1) * pageSize;
+        List<Blog> blogs = blogMapper.queryBlogByIds(ids, offset, pageSize);
+        return Result.ok(blogs);
     }
 
     private void queryBlogUser(Blog blog) {

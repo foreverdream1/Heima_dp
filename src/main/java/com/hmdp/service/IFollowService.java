@@ -11,4 +11,6 @@ public interface IFollowService {
     Result follow(Long followUserId, Boolean isFollow);
 
     Result isFollow(Long followUserId);
+
+    Result commonFollows(Long id);
 }

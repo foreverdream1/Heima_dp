@@ -18,10 +18,10 @@ public interface FollowMapper {
     List<Follow> findByFollowUserId(Long followUserId);
 
     @Insert("insert into tb_follow(user_id,follow_user_id) values(#{userId},#{followUserId})")
-    void save(Follow follow);
+    boolean save(Follow follow);
 
     @Delete("delete from tb_follow where user_id = #{userId} and follow_user_id = #{followUserId}")
-    void delete(Long userId, Long followUserId);
+    boolean delete(Long userId, Long followUserId);
 
     @Select("select * from tb_follow where user_id = #{userId} and follow_user_id = #{followUserId}")
     Integer selectOne(Long userId, Long followUserId);

@@ -2,6 +2,7 @@ package com.hmdp.mapper;
 
 import com.hmdp.entity.Blog;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -21,4 +22,15 @@ public interface BlogMapper {
 
     @Update("update tb_blog set liked = liked - 1 where id = #{id}")
     boolean updateSubLiked(Long id);
+
+    /**
+     * 根据用户 id 列表分页查询博客（按 create_time 降序）
+     *
+     * @param ids      关注的用户 id 列表
+     * @param offset   跳过的记录数（(page-1)*pageSize）
+     * @param pageSize 每页条数
+     */
+    List<Blog> queryBlogByIds(@Param("ids") List<Long> ids,
+                              @Param("offset") int offset,
+                              @Param("pageSize") int pageSize);
 }
