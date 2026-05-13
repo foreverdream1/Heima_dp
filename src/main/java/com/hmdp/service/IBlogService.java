@@ -14,4 +14,6 @@ public interface IBlogService {
     Result queryBlogById(Long id);
 
     Result likeBlog(Long id);
+
+    Result queryBlogLikes(Long id);
 }

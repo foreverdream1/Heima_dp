@@ -1,6 +1,5 @@
 package com.hmdp.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
@@ -12,8 +11,9 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,7 +29,7 @@ import java.util.concurrent.*;
 
 @Slf4j
 @Service
-public class VoucherOrderServiceImpl implements IVoucherOrderService {
+public class VoucherOrderServiceImpl implements IVoucherOrderService, ApplicationContextAware {
 
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 
@@ -70,9 +70,30 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private IVoucherOrderService proxy;
+    private ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     @PostConstruct
     private void init() {
+        // 初始化 Stream 消费组：先尝试创建 stream，再创建消费组（忽略已存在的异常）
+        try {
+            redisTemplate.opsForStream().add("stream.orders",
+                    Collections.singletonMap("init", "init"));
+        } catch (Exception ignored) {
+        }
+        try {
+            redisTemplate.opsForStream().createGroup("stream.orders", ReadOffset.from("$"), "g1");
+            log.info("Stream消费组 g1 创建成功");
+        } catch (Exception e) {
+            log.info("Stream消费组 g1 已存在");
+        }
+        // 注意：此处不能用 applicationContext.getBean() 获取代理，
+        // 因为 @PostConstruct 执行时代理可能尚未创建。
+        // proxy 将在 handlerVoucherOrder() 中延迟初始化。
         SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
     }
 
@@ -113,7 +134,18 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
                     //解析消息中的订单信息
                     MapRecord<String, Object, Object> record = list.get(0);
                     Map<Object, Object> values = record.getValue();
-                    VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(values, new VoucherOrder(), true);//把获取的订单信息转为VoucherOrder对象保存，如果不存在，就忽略
+                    Object idObj = values.get("id");
+                    Object userIdObj = values.get("userId");
+                    Object voucherIdObj = values.get("voucherId");
+                    if (idObj == null || userIdObj == null || voucherIdObj == null) {
+                        log.warn("订单消息字段缺失，跳过并ACK: {}", record.getId());
+                        redisTemplate.opsForStream().acknowledge(queueName, "g1", record.getId());
+                        continue;
+                    }
+                    VoucherOrder voucherOrder = new VoucherOrder();
+                    voucherOrder.setId(Long.valueOf(idObj.toString()));
+                    voucherOrder.setUserId(Long.valueOf(userIdObj.toString()));
+                    voucherOrder.setVoucherId(Long.valueOf(voucherIdObj.toString()));
                     //失败，没有消息，继续下一次循环
 
                     //如果成功，可以下单
@@ -146,7 +178,18 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
                     //解析消息中的订单信息
                     MapRecord<String, Object, Object> record = list.get(0);
                     Map<Object, Object> values = record.getValue();
-                    VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(values, new VoucherOrder(), true);//把获取的订单信息转为VoucherOrder对象保存，如果不存在，就忽略
+                    Object idObj = values.get("id");
+                    Object userIdObj = values.get("userId");
+                    Object voucherIdObj = values.get("voucherId");
+                    if (idObj == null || userIdObj == null || voucherIdObj == null) {
+                        log.warn("Pending订单消息字段缺失，跳过并ACK: {}", record.getId());
+                        redisTemplate.opsForStream().acknowledge(queueName, "g1", record.getId());
+                        continue;
+                    }
+                    VoucherOrder voucherOrder = new VoucherOrder();
+                    voucherOrder.setId(Long.valueOf(idObj.toString()));
+                    voucherOrder.setUserId(Long.valueOf(userIdObj.toString()));
+                    voucherOrder.setVoucherId(Long.valueOf(voucherIdObj.toString()));
                     //失败，没有消息，继续下一次循环
 
                     //如果成功，可以下单
@@ -155,16 +198,24 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
                     redisTemplate.opsForStream().acknowledge(queueName, "g1", record.getId());
 
                 } catch (Exception e) {
-                    log.error("处理Pending-list异常");
+                    log.error("处理Pending-list异常", e);
+                    break;  // 异常时退出，避免死循环
                 }
+            }
         }
-    }
 
     private void handlerVoucherOrder(VoucherOrder voucherOrder) {
         Long userId = voucherOrder.getUserId();
         RLock lock = null;
         try {
-            //获取代理对象
+            // 延迟初始化 proxy（避开 @PostConstruct 阶段无法获取代理的问题）
+            if (proxy == null && applicationContext != null) {
+                proxy = applicationContext.getBean(IVoucherOrderService.class);
+            }
+            if (proxy == null) {
+                log.error("proxy 未初始化，跳过订单处理");
+                return;
+            }
             //创建锁对象
             lock = redissonClient.getLock("lock:order:" + userId);
             boolean isLock = lock.tryLock(1, 10, TimeUnit.SECONDS);
@@ -173,12 +224,14 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
                 log.error("不允许重复下单");
                 return;
             }
-
             proxy.getResult(voucherOrder);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            // 吞掉异常，避免消息未 ACK 导致死循环重试
+            log.error("订单处理异常: {}", e.getMessage());
         } finally {
-            lock.unlock();
+            if (lock != null && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 }
@@ -213,9 +266,7 @@ public class VoucherOrderServiceImpl implements IVoucherOrderService {
 //
 //        //为0，有购买资格，把下单信息保存到阻塞队列
 //        orderTasks.add(voucherOrder);
-    //获取代理对象
-    proxy = (IVoucherOrderService) AopContext.currentProxy();
-    //返回订单id
+        //返回订单id
     return Result.ok(orderId);
 }
 
@@ -271,7 +322,7 @@ public void getResult(VoucherOrder voucherOrder) {
     //一人一单
     Long userId = voucherOrder.getUserId();
     //查询订单
-    int count = voucherOrderMapper.findByUserIdAndVoucherId(userId, voucherOrder);
+    int count = voucherOrderMapper.findByUserIdAndVoucherId(userId, voucherOrder.getVoucherId());
     //判断是否购买过
     if (count > 0) {
         log.error("您已购买过该优惠券");

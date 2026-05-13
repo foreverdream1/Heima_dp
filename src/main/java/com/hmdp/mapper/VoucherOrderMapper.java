@@ -2,6 +2,7 @@ package com.hmdp.mapper;
 
 import com.hmdp.entity.VoucherOrder;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -18,5 +19,5 @@ public interface VoucherOrderMapper {
 
     void save(VoucherOrder voucherOrder);
 
-    int findByUserIdAndVoucherId(Long userId, VoucherOrder voucherOrder);
+    int findByUserIdAndVoucherId(@Param("userId") Long userId, @Param("voucherId") Long voucherId);
 }
