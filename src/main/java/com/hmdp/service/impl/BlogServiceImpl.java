@@ -5,9 +5,11 @@ import cn.hutool.core.util.BooleanUtil;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
+import com.hmdp.entity.Follow;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.BlogMapper;
 import com.hmdp.service.IBlogService;
+import com.hmdp.service.IFollowService;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.UserHolder;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +29,8 @@ public class BlogServiceImpl implements IBlogService {
 
     public static final String BLOG_PREFIX_LIKED = RedisConstants.BLOG_LIKED_KEY;
 
+    public static final String FOLLOW_BLOG_KEY="feed:";
+
     @Autowired
     private BlogMapper blogMapper;
 
@@ -34,6 +39,9 @@ public class BlogServiceImpl implements IBlogService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private IFollowService followService;
 
     @Override
     public Blog findById(Long id) {
@@ -108,10 +116,7 @@ public class BlogServiceImpl implements IBlogService {
                 //把用户从redis的set集合中移除
                 redisTemplate.opsForZSet().remove(key, userId.toString());
             }
-
-
         }
-
 
         return Result.ok();
     }
@@ -142,6 +147,34 @@ public class BlogServiceImpl implements IBlogService {
         int offset = (page - 1) * pageSize;
         List<Blog> blogs = blogMapper.queryBlogByIds(ids, offset, pageSize);
         return Result.ok(blogs);
+    }
+
+    @Override
+    public Result saveBlog(Blog blog) {
+        // 获取登录用户
+        UserDTO user = UserHolder.getUser();
+        blog.setUserId(user.getId());
+        // 填充创建时间和更新时间
+        LocalDateTime now = LocalDateTime.now();
+        blog.setCreateTime(now);
+        blog.setUpdateTime(now);
+        // 保存探店笔记
+        boolean success = blogMapper.save(blog);
+        if(!success){
+            return Result.fail("新增笔记失败");
+        }
+        //查询粉丝id
+        List<Follow> follows=followService.queryFans(user.getId());
+        //推送笔记id给所有粉丝
+        for (Follow follow : follows) {
+            //获取粉丝id
+            Long userId = follow.getUserId();
+            //推送到收件箱
+            String key=FOLLOW_BLOG_KEY+userId;
+            redisTemplate.opsForZSet().add(key,blog.getId().toString(),System.currentTimeMillis());
+        }
+        //返回id
+        return Result.ok(blog.getId());
     }
 
     private void queryBlogUser(Blog blog) {

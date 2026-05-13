@@ -18,4 +18,6 @@ public interface IBlogService {
     Result queryBlogLikes(Long id);
 
     Result queryBlogByIds(List<Long> ids, Integer page, Integer pageSize);
+
+    Result saveBlog(Blog blog);
 }

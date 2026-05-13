@@ -33,4 +33,12 @@ public interface BlogMapper {
     List<Blog> queryBlogByIds(@Param("ids") List<Long> ids,
                               @Param("offset") int offset,
                               @Param("pageSize") int pageSize);
+
+    /**
+     * 保存博客笔记
+     *
+     * @param blog 博客实体（id 由数据库自增生成）
+     * @return 是否保存成功
+     */
+    boolean save(Blog blog);
 }

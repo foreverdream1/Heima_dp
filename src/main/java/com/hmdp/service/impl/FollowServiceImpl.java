@@ -102,4 +102,9 @@ public class FollowServiceImpl implements IFollowService {
         List<UserDTO> users = userService.listById(ids).stream().map(user -> BeanUtil.copyProperties(user, UserDTO.class)).collect(Collectors.toList());
         return Result.ok(users);
     }
+
+    @Override
+    public List<Follow> queryFans(Long id) {
+        return List.of();
+    }
 }

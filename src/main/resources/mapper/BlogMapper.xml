@@ -4,16 +4,31 @@
 
 <mapper namespace="com.hmdp.mapper.BlogMapper">
 
-    <!-- 根据关注用户的 id 列表分页查询博客，按发布时间降序 -->
-    <select id="queryBlogByIds" resultType="com.hmdp.entity.Blog">
-        SELECT *
-        FROM tb_blog
-        WHERE user_id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-        ORDER BY create_time DESC
-        LIMIT #{offset}, #{pageSize}
-    </select>
+    <!-- 保存博客笔记 -->
+    <insert id="save" parameterType="com.hmdp.entity.Blog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_blog
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="shopId != null">shop_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="images != null and images != ''">images,</if>
+            <if test="content != null and content != ''">content,</if>
+            <if test="liked != null">liked,</if>
+            <if test="comments != null">comments,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="shopId != null">#{shopId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="images != null and images != ''">#{images},</if>
+            <if test="content != null and content != ''">#{content},</if>
+            <if test="liked != null">#{liked},</if>
+            <if test="comments != null">#{comments},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
 
 </mapper>

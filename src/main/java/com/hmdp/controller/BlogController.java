@@ -43,7 +43,7 @@ public class BlogController {
     public Result saveBlog(
             @Parameter(description = "博客内容", required = true)
             @RequestBody Blog blog) {
-        return Result.fail("功能未完成");
+        return blogService.saveBlog(blog);
     }
 
     /**
