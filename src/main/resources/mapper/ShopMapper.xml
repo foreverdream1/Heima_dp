@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hmdp.mapper.ShopMapper">
+
+    <!-- 按类型分页查询店铺（无坐标路径） -->
+    <select id="findByTypeId" resultType="com.hmdp.entity.Shop">
+        SELECT *
+        FROM tb_shop
+        WHERE type_id = #{typeId}
+        ORDER BY id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!--
+        按 id 列表批量查询店铺，并通过 FIELD() 函数保持 Redis GEO 返回的距离升序排列。
+        ids 来自 Redis GEO 查询结果，已按距离从近到远排好序；
+        ORDER BY FIELD(id, ...) 使 MySQL 结果严格与 ids 顺序一致。
+        distance 字段为 transient，不在 SQL 中，由 Service 层回填。
+    -->
+    <select id="queryIdsAndOrderByDistance" resultType="com.hmdp.entity.Shop">
+        SELECT *
+        FROM tb_shop
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY FIELD(id,
+        <foreach collection="ids" item="id" separator=",">
+            #{id}
+        </foreach>
+        )
+    </select>
+
+</mapper>
