@@ -35,4 +35,6 @@ public interface IUserService {
      * @return
      */
     List<User> listById(List<Long> ids);
+
+    Result sign();
 }
