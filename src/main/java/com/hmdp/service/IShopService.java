@@ -3,8 +3,6 @@ package com.hmdp.service;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 
-import java.util.List;
-
 public interface IShopService {
     /**
      * 根据id查询商户信息
@@ -15,10 +13,11 @@ public interface IShopService {
 
     /**
      * 根据商户类型查询商户信息
+     *
      * @param typeId
      * @return
      */
-    List<Shop> findByTypeId(Long typeId);
+    Result findByTypeId(Long typeId, Integer current, Double x, Double y);
 
     /**
      * 根据id更新商户

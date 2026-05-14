@@ -71,7 +71,6 @@ public class ShopController {
      * 根据类型查询店铺列表
      *
      * @param typeId  店铺类型ID
-     * @param current 当前页码（预留参数，暂未实现分页）
      * @return 店铺列表
      */
     @Operation(summary = "根据类型查询店铺", description = "根据店铺类型ID查询该类型下的所有店铺")
@@ -79,11 +78,14 @@ public class ShopController {
     public Result queryShopByType(
             @Parameter(description = "店铺类型ID", required = true, example = "1")
             @RequestParam("typeId") Integer typeId,
-            @Parameter(description = "当前页码", example = "1")
-            @RequestParam(value = "current", defaultValue = "1") Integer current) {
-        List<Shop> shops = shopService.findByTypeId((long) typeId);
+            @RequestParam("current") Integer current,
+            @RequestParam(value = "x",required = false) Double x,
+            @RequestParam(value = "y",required = false) Double y) {
+        List<Shop> shops = shopService.findByTypeId((long) typeId,current,x,y);
         return Result.ok(shops != null ? shops : Collections.emptyList());
     }
+
+
 
     /**
      * 根据名称查询店铺（预留接口，暂未实现）
