@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -42,8 +43,7 @@ public class UserServiceImpl implements IUserService {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
-    @Autowired
-    private UserHolder userHolder;
+
 
     @Override
     public User findById(Long id) {
@@ -135,7 +135,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public Result sign() {
         //获取当前登录用户
-        Long userId = userHolder.getUser().getId();
+        Long userId = UserHolder.getUser().getId();
         //获取日期
         LocalDateTime now = LocalDateTime.now();
         //拼接key
@@ -146,6 +146,48 @@ public class UserServiceImpl implements IUserService {
         //写入redis SETBIT key offset value
         stringRedisTemplate.opsForValue().setBit(key,dayOfMonth-1,true);
         return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        //获取本月截止今天为止的所有签到记录
+        Long userId = UserHolder.getUser().getId();
+        //获取日期
+        LocalDateTime now = LocalDateTime.now();
+        //拼接key
+        String keySuffix = now.format(DateTimeFormatter.ofPattern("yyyyMM"));
+        String key=RedisConstants.USER_SIGN_KEY+userId+keySuffix;
+        //获取今天是本月第几天
+        int dayOfMonth = now.getDayOfMonth();
+        //获取本月戒指今天为止的所有的签到记录，返回一个十进制数字
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(
+                key, BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0)
+        );
+        if(result==null||result.isEmpty()){
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if(num==null||num==0){
+            return Result.ok();
+        }
+        //循环遍历
+        int count=0;
+        while (true){
+            //让数字和1做与运算，得到数字的最后一个bit位
+            if((num&1)==0){
+                //如果是0，则说明今天没有签到，返回0
+                break;
+            }
+            else {
+                //如果是1，则说明今天签到，返回1
+                count++;
+            }
+            //判断这个bit位是否为0
+            num=num>>1;
+
+        }
+
+        return Result.ok(count);
     }
 
     private User createUserWithPhone(String phone){

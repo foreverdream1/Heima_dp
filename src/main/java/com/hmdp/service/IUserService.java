@@ -37,4 +37,6 @@ public interface IUserService {
     List<User> listById(List<Long> ids);
 
     Result sign();
+
+    Result signCount();
 }
